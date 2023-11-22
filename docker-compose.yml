@@ -1,0 +1,21 @@
+version: "3.8"
+
+services:
+
+  uart_server:
+    build: .
+    image: uart_server:latest
+    ports:
+      - "12345:12345"
+    devices:
+      - /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_AB0LFXWH-if00-port0:/dev/ttyUARTDEVICE
+    environment:
+      - TZ=Europe/Copenhagen
+      - DEVICE=/dev/ttyUARTDEVICE
+      - BAUDRATE=1200
+      - HOST=0.0.0.0
+      - TIMEOUT=7200
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /etc/timezone:/etc/timezone:ro
+    restart: always
