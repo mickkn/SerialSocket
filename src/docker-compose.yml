@@ -5,6 +5,7 @@ services:
   uart_server:
     build: .
     image: uart_server:latest
+    container_name: uart_server
     ports:
       - "12345:12345"
     devices:

@@ -13,6 +13,8 @@ import socket
 import threading
 import time
 import serial
+import logging
+from datetime import datetime
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 
 
@@ -62,7 +64,7 @@ def parser():
     return args.parse_args()
 
 
-class UARTServer:
+class SerialSocket:
     """A simple UART server that listens on a TCP socket and
     forwards the data to the UART and vice versa.
     """
@@ -91,21 +93,27 @@ class UARTServer:
         self._serial.timeout = _timeout
         self._server_socket = None
         self._client_socket = None
+        logging.basicConfig(level=logging.DEBUG,
+                            format="[%(asctime)s] [%(levelname)s] %(message)s",
+                            datefmt="%Y-%m-%d %H:%M:%S",
+                            )
+        self.logger = logging.getLogger(__name__)
 
     def _socket_to_serial(self):
         """Read from socket and send to UART"""
         try:
             while True:
                 data = self._client_socket.recv(1024)
+                self.logger.debug(f"Received data: {data}")
                 if len(data) == 0:
                     break  # Client closed connection or timed out.
                 self._serial.write(data)
         except KeyboardInterrupt:
             pass
         except TimeoutError:
-            print("Socket timeout. Restarting server...")
+            self.logger.info("Socket timeout. Restarting server...")
         except Exception as e:
-            print(f"Error in communication with client: {e}")
+            self.logger.error(f"Error in communication with client: {e}")
 
     def _serial_to_socket(self):
         """Read from UART and send to socket"""
@@ -118,9 +126,9 @@ class UARTServer:
         except KeyboardInterrupt:
             pass
         except TimeoutError:
-            print("Serial interface timeout. Restarting server...")
+            self.logger.info("Serial interface timeout. Restarting server...")
         except Exception as e:
-            print(f"Error in communication with client: {e}")
+            self.logger.error(f"Error in communication with client: {e}")
 
     def start(self):
         """Start the endless loop of reading from Client and writing back to Client"""
@@ -132,10 +140,10 @@ class UARTServer:
                 self._server_socket.settimeout(self._timeout)
                 self._server_socket.bind((self._host, self._port))
                 self._server_socket.listen(1)  # Listen for one connection at a time
-                print(f"UART Socket Server listening on {self._host}:{self._port}")
+                self.logger.info(f"UART Socket Server listening on {self._host}:{self._port}")
                 self._client_socket, client_address = self._server_socket.accept()
                 self._client_socket.settimeout(self._timeout)
-                print(f"Connection from {client_address}")
+                self.logger.info(f"Connection from {client_address}")
                 from_thread = threading.Thread(target=self._socket_to_serial, daemon=True)
                 from_thread.start()
                 to_thread = threading.Thread(target=self._serial_to_socket, daemon=True)
@@ -146,19 +154,19 @@ class UARTServer:
 
                 self._client_socket.close()
 
-                print("Threads joined")
+                self.logger.debug("Threads joined")
 
             except TimeoutError:
-                print("Timeout. Restarting server...")
+                self.logger.info("Timeout. Restarting server...")
                 continue
             except KeyboardInterrupt:
-                print("\nServer terminated by user.")
+                self.logger.info("\nServer terminated by user.")
                 break
             except Exception as e:
-                print(f"Error in server: {e}")
+                self.logger.error(f"Error in server: {e}")
                 break
             finally:
-                print("Closing sockets...")
+                self.logger.info("Closing sockets...")
                 if self._client_socket:
                     self._client_socket.close()
                 if self._server_socket:
@@ -176,5 +184,5 @@ if __name__ == "__main__":
     baud_rate = int(os.getenv("BAUD_RATE", args.baud_rate))
     timeout = float(os.getenv("TIMEOUT", args.timeout))
 
-    uart_server = UARTServer(device, host, baud_rate, port, timeout)
+    uart_server = SerialSocket(device, host, baud_rate, port, timeout)
     uart_server.start()

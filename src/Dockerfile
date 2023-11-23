@@ -5,7 +5,7 @@ FROM python:3.9-alpine
 WORKDIR /app
 
 # Copy only the necessary files
-COPY uart_server.py requirements.txt /app/
+COPY serial_socket.py requirements.txt /app/
 
 # Install dependencies
 RUN pip install --no-cache-dir -r requirements.txt
@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 EXPOSE 12345
 
 # Run the script when the container starts
-CMD ["python", "uart_server.py"]
+CMD ["python", "serial_socket.py"]
